@@ -40,27 +40,30 @@ func Uniq(reader io.Reader, writer io.Writer, opts Options) error {
 	var prevLine *string
 	count := 0
 
-	flush := func() {
+	flush := func() error {
 		if prevLine == nil {
-			return
+			return nil
 		}
 
 		line := *prevLine
+		var err error
 
 		switch {
 		case opts.C:
-			fmt.Fprintf(writer, "%d %s\n", count, line)
+			_, err = fmt.Fprintf(writer, "%d %s\n", count, line)
 		case opts.D:
 			if count > 1 {
-				fmt.Fprintln(writer, line)
+				_, err = fmt.Fprintln(writer, line)
 			}
 		case opts.U:
 			if count == 1 {
-				fmt.Fprintln(writer, line)
+				_, err = fmt.Fprintln(writer, line)
 			}
 		default:
-			fmt.Fprintln(writer, line)
+			_, err = fmt.Fprintln(writer, line)
 		}
+
+		return err
 	}
 
 	for scanner.Scan() {
@@ -78,13 +81,17 @@ func Uniq(reader io.Reader, writer io.Writer, opts Options) error {
 		if prevKey == currentKey {
 			count++
 		} else {
-			flush()
+			if err := flush(); err != nil {
+				return err
+			}
 			prevLine = &currentLine
 			count = 1
 		}
 	}
 
-	flush()
+	if err := flush(); err != nil {
+		return err
+	}
 
 	return scanner.Err()
 }

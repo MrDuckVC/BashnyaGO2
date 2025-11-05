@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-
 	"uniq/uniqpkg"
 )
 
@@ -43,28 +42,37 @@ func main() {
 
 	var reader io.Reader = os.Stdin
 	var writer io.Writer = os.Stdout
-	var err error
 
 	args := flag.Args()
 
 	if len(args) > 0 {
 		inputFile := args[0]
-		reader, err = openFile(inputFile)
+		file, err := openFile(inputFile)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		defer reader.(io.ReadCloser).Close()
+		reader = file
+		defer func() {
+			if err := file.Close(); err != nil {
+				fmt.Fprintf(os.Stderr, "ошибка закрытия input-файла: %v\n", err)
+			}
+		}()
 	}
 
 	if len(args) > 1 {
 		outputFile := args[1]
-		writer, err = createFile(outputFile)
+		file, err := createFile(outputFile)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		defer writer.(io.WriteCloser).Close()
+		writer = file
+		defer func() {
+			if err := file.Close(); err != nil {
+				fmt.Fprintf(os.Stderr, "ошибка закрытия output-файла: %v\n", err)
+			}
+		}()
 	}
 
 	if err := uniqpkg.Uniq(reader, writer, opts); err != nil {
